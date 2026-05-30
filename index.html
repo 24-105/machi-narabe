@@ -11,6 +11,15 @@
       name="description"
       content="まちならべは、7×7の街マップに建物を置き、同じ建物を3つつなげて大きな建物を作るスマホ向けパズルです。ミッションやアイテムを使ってベストスコアを狙えます。"
     />
+    <meta
+      name="keywords"
+      content="まちならべ, 街づくり, パズルゲーム, スマホゲーム, ブラウザゲーム, 3マッチ"
+    />
+    <meta name="game:title" content="まちならべ" />
+    <meta
+      name="game:description"
+      content="建物を3つつなげて街を広げる、スマホ向けの無料ブラウザパズルゲームです。"
+    />
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#162329" />
     <meta name="color-scheme" content="light" />
@@ -18,8 +27,10 @@
     <meta name="apple-mobile-web-app-title" content="まちならべ" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="format-detection" content="telephone=no" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ja_JP" />
+    <meta property="og:url" content="https://24-105.github.io/machi-narabe/" />
     <meta property="og:site_name" content="まちならべ" />
     <meta
       property="og:title"
@@ -29,6 +40,8 @@
       property="og:description"
       content="建物を置いて、3つつなげて、少しずつ街を大きくするスマホ街パズル。"
     />
+    <meta property="og:image" content="https://24-105.github.io/machi-narabe/favicon.svg" />
+    <meta property="og:image:alt" content="まちならべのアプリアイコン" />
     <meta name="twitter:card" content="summary" />
     <meta
       name="twitter:title"
@@ -38,7 +51,9 @@
       name="twitter:description"
       content="7×7の街マップで同じ建物を3つつなげ、ミッションとアイテムでベストスコアを狙うスマホ街パズル。"
     />
-    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <meta name="twitter:image" content="https://24-105.github.io/machi-narabe/favicon.svg" />
+    <link rel="canonical" href="https://24-105.github.io/machi-narabe/" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
     <link rel="stylesheet" href="./src/styles.css" />
     <script type="application/ld+json">
@@ -48,12 +63,15 @@
         "name": "まちならべ",
         "alternateName": "3つつなげるスマホ街パズル",
         "description": "7×7の街マップに建物を置き、同じ建物を3つつなげて少しずつ街を大きくするブラウザ完結のスマホ向けパズルゲームです。",
-        "inLanguage": "ja",
-        "genre": ["Puzzle", "City building"],
-        "gamePlatform": ["Web browser", "Mobile browser"],
-        "operatingSystem": "iOS, Android, macOS, Windows",
+        "url": "https://24-105.github.io/machi-narabe/",
+        "image": "https://24-105.github.io/machi-narabe/favicon.svg",
         "applicationCategory": "GameApplication",
+        "operatingSystem": "iOS, Android, Web",
+        "gamePlatform": ["Web browser", "Mobile browser"],
+        "inLanguage": "ja",
+        "genre": ["街づくりパズル", "3マッチパズル", "ブラウザゲーム"],
         "playMode": "SinglePlayer",
+        "isAccessibleForFree": true,
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -348,6 +366,7 @@
               <a
                 class="recommend-card"
                 href="https://24-105.github.io/classic-single-obstacle-ride/"
+                data-icon-page="https://24-105.github.io/classic-single-obstacle-ride/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム: 自転車ダッシュ"
@@ -356,7 +375,7 @@
                   <span class="recommend-bike-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
-                  <em>3D障害物回避</em>
+                  <em></em>
                   <strong>自転車ダッシュ</strong>
                   <small>左右移動とジャンプで障害物を避ける</small>
                 </span>
@@ -365,6 +384,8 @@
               <a
                 class="recommend-card"
                 href="https://24-105.github.io/kameposu/"
+                data-icon-page="https://24-105.github.io/kameposu/"
+                data-icon-src="https://24-105.github.io/kameposu/favicon.svg"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム: かめぽす便"
@@ -373,7 +394,7 @@
                   <span class="recommend-kameposu-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
-                  <em>1分配達アクション</em>
+                  <em></em>
                   <strong>かめぽす便</strong>
                   <small>荷物を拾って家まで届ける</small>
                 </span>
@@ -382,17 +403,18 @@
               <a
                 class="recommend-card"
                 href="https://24-105.github.io/hitoyo-saishucho/"
+                data-icon-src="https://24-105.github.io/hitoyo-saishucho/assets/icon.svg"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="おすすめゲーム: ひとよ採集帖"
+                aria-label="おすすめゲーム"
               >
                 <span class="recommend-card-art recommend-card-art-hitoyo" aria-hidden="true">
                   <span class="recommend-hitoyo-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
-                  <em>夜の分岐掌編</em>
-                  <strong>ひとよ採集帖</strong>
-                  <small>夜の村で拾いものと返事を選ぶ</small>
+                  <em></em>
+                  <strong></strong>
+                  <small></small>
                 </span>
                 <b aria-hidden="true">遊ぶ</b>
               </a>
@@ -449,6 +471,7 @@
               <a
                 class="recommend-card"
                 href="https://24-105.github.io/classic-single-obstacle-ride/"
+                data-icon-page="https://24-105.github.io/classic-single-obstacle-ride/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム: 自転車ダッシュ"
@@ -457,7 +480,7 @@
                   <span class="recommend-bike-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
-                  <em>3D障害物回避</em>
+                  <em></em>
                   <strong>自転車ダッシュ</strong>
                   <small>左右移動とジャンプで障害物を避ける</small>
                 </span>
@@ -466,6 +489,8 @@
               <a
                 class="recommend-card"
                 href="https://24-105.github.io/kameposu/"
+                data-icon-page="https://24-105.github.io/kameposu/"
+                data-icon-src="https://24-105.github.io/kameposu/favicon.svg"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム: かめぽす便"
@@ -474,7 +499,7 @@
                   <span class="recommend-kameposu-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
-                  <em>1分配達アクション</em>
+                  <em></em>
                   <strong>かめぽす便</strong>
                   <small>荷物を拾って家まで届ける</small>
                 </span>
@@ -483,17 +508,18 @@
               <a
                 class="recommend-card"
                 href="https://24-105.github.io/hitoyo-saishucho/"
+                data-icon-src="https://24-105.github.io/hitoyo-saishucho/assets/icon.svg"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="おすすめゲーム: ひとよ採集帖"
+                aria-label="おすすめゲーム"
               >
                 <span class="recommend-card-art recommend-card-art-hitoyo" aria-hidden="true">
                   <span class="recommend-hitoyo-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
-                  <em>夜の分岐掌編</em>
-                  <strong>ひとよ採集帖</strong>
-                  <small>夜の村で拾いものと返事を選ぶ</small>
+                  <em></em>
+                  <strong></strong>
+                  <small></small>
                 </span>
                 <b aria-hidden="true">遊ぶ</b>
               </a>

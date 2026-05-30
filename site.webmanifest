@@ -1,9 +1,11 @@
 {
   "name": "まちならべ",
   "short_name": "まちならべ",
-  "description": "3つつなげるスマホ街パズル",
+  "description": "建物を3つつなげて街を広げる、スマホ向けの無料ブラウザパズルゲームです。",
   "lang": "ja",
+  "id": "/machi-narabe/",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#eef0eb",
@@ -11,7 +13,7 @@
   "categories": ["games", "entertainment", "puzzle"],
   "icons": [
     {
-      "src": "./icon.svg",
+      "src": "./favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

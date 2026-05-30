@@ -15,6 +15,7 @@ const CONSTRUCTION = -3;
 const CRANE = -4;
 const PARK = -5;
 const STALL = -6;
+const ROAD_CREW = -7;
 const TRASH_PENALTY = 280;
 const CLEANUP_BONUS = 180;
 const CLEANUP_CHAIN_BONUS = 130;
@@ -34,6 +35,8 @@ const BLOCK_START_TURN = 16;
 const BLOCK_INTERVAL = 7;
 const MAX_BLOCKED_LOTS = 4;
 const BLOCK_CLEAR_BONUS = 180;
+const ROAD_WORK_BONUS = 140;
+const ROAD_OPEN_BONUS = 90;
 const BLOCK_EFFECT_DURATION = 1150;
 const EPIC_EFFECT_DURATION = 2800;
 
@@ -74,6 +77,7 @@ const SPECIALS = {
   [CRANE]: { mark: "ク", name: "クレーン", color: "#c08a19", soft: "#fff0c9", score: CRANE_BONUS },
   [PARK]: { mark: "緑", name: "公園", color: "#3c9a62", soft: "#e0f1e5", score: PARK_BONUS },
   [STALL]: { mark: "屋", name: "屋台", color: "#cf6b43", soft: "#fae8dd", score: STALL_BASE_BONUS },
+  [ROAD_CREW]: { mark: "道", name: "道路班", color: "#466978", soft: "#e6eff1", score: BLOCK_CLEAR_BONUS + ROAD_OPEN_BONUS },
 };
 
 const GRADE_LINES = [
@@ -241,6 +245,7 @@ const state = {
 let rankingRecords = [];
 let rankingStatusText = "確認中";
 let latestResultCreatedAt = "";
+let recommendationRefreshId = 0;
 
 dom.resetButton.addEventListener("click", requestReset);
 dom.overlayStartButton.addEventListener("click", startGame);
@@ -277,6 +282,7 @@ dom.rankingOverlay.addEventListener("click", (event) => {
 
 resetGame();
 loadRankings();
+refreshRecommendationCards();
 
 function resetGame() {
   const seed = getJstDateKey();
@@ -367,6 +373,7 @@ function closeRankingOverlay() {
 }
 
 function openRecommendOverlay() {
+  refreshRecommendationCards();
   dom.recommendOverlay.classList.add("show");
   dom.recommendOverlay.setAttribute("aria-hidden", "false");
 }
@@ -424,6 +431,9 @@ function spawnCandidates() {
   if (parkCount() > 0) {
     candidates.push([STALL, 10]);
   }
+  if (blockedLotCount() > 0) {
+    candidates.push([ROAD_CREW, 12]);
+  }
   return candidates;
 }
 
@@ -449,7 +459,11 @@ function placeCurrent(index) {
     return;
   }
   if (isLotBlocked(index)) {
-    setMessage("通行止めです。清掃車が来たら、このマスを開けられます。", "通行止め");
+    if (state.current === ROAD_CREW) {
+      clearBlockedLot(index);
+      return;
+    }
+    setMessage("通行止めです。道路班が来たら、このマスを開けられます。", "通行止め");
     return;
   }
   if (state.current === CRANE) {
@@ -458,6 +472,10 @@ function placeCurrent(index) {
   }
   if (state.current === STALL) {
     useStall(index);
+    return;
+  }
+  if (state.current === ROAD_CREW) {
+    useRoadCrew(index);
     return;
   }
   if (state.grid[index]) {
@@ -537,7 +555,7 @@ function placeCurrent(index) {
 
 function cleanTrash(index) {
   if (isLotBlocked(index)) {
-    clearBlockedLot(index);
+    setMessage("通行止めは道路班で開けられます。清掃車はゴミ屋敷か空き区画に使えます。", "清掃班");
     return;
   }
   if (!state.grid[index]) {
@@ -570,7 +588,7 @@ function cleanTrash(index) {
 
 function clearBlockedLot(index) {
   state.blockedLots.delete(index);
-  state.current = state.next;
+  state.current = normalizeQueuedCard(state.next);
   state.turns += 1;
   state.movesLeft = Math.max(0, state.movesLeft - 1 + CLEANUP_MOVE_BONUS);
   state.lastPlaced = index;
@@ -579,14 +597,14 @@ function clearBlockedLot(index) {
   state.effectMode = "open";
   state.lastChain = 0;
   state.score += BLOCK_CLEAR_BONUS;
-  setReaction(`開通 +${formatNumber(BLOCK_CLEAR_BONUS)}`, "clean");
-  setMessage(`通行止めを開けました。スコア +${formatNumber(BLOCK_CLEAR_BONUS)}、手数+${CLEANUP_MOVE_BONUS - 1}。`, "清掃班");
+  setReaction(`開通 +${formatNumber(BLOCK_CLEAR_BONUS)}`, "crane");
+  setMessage(`通行止めを開けました。スコア +${formatNumber(BLOCK_CLEAR_BONUS)}、手数+${CLEANUP_MOVE_BONUS - 1}。`, "道路班");
   finishTurn(false, 18, false);
 }
 
 function improveEmptyLot(index) {
   if (isLotBlocked(index)) {
-    clearBlockedLot(index);
+    setMessage("通行止めは道路班で開けられます。清掃車は空き区画の整備に使えます。", "清掃班");
     return;
   }
   if (state.grid[index]) {
@@ -606,6 +624,47 @@ function improveEmptyLot(index) {
   setReaction(`整備 +${formatNumber(CLEANUP_EMPTY_BONUS)}`, "clean");
   setMessage(`空き区画を整えました。マスは空いたまま、スコア +${formatNumber(CLEANUP_EMPTY_BONUS)}、手数 +${CLEANUP_MOVE_BONUS - 1}。`, "清掃班");
   finishTurn(false, 18, false);
+}
+
+function useRoadCrew(index) {
+  if (isLotBlocked(index)) {
+    clearBlockedLot(index);
+    return;
+  }
+  if (state.grid[index]) {
+    setMessage("道路班は、通行止めか空き区画に使えます。", "道路班");
+    return;
+  }
+  buildRoad(index);
+}
+
+function buildRoad(index) {
+  const openedLot = openRoadworkLot(index);
+  consumeSpecial(index);
+  state.effectMode = "roadwork";
+  state.lastChain = 0;
+  const bonus = ROAD_WORK_BONUS + (openedLot >= 0 ? ROAD_OPEN_BONUS : 0);
+  state.score += bonus;
+  setReaction(openedLot >= 0 ? "道がのびた!" : `道づくり +${formatNumber(bonus)}`, "crane");
+  setMessage(
+    openedLot >= 0
+      ? `道をのばして、新しい区画が1マス開きました。スコア +${formatNumber(bonus)}。`
+      : `道を整えました。スコア +${formatNumber(bonus)}。`,
+    "道路班",
+  );
+  finishTurn(false, openedLot >= 0 ? 22 : 14, false);
+}
+
+function openRoadworkLot(index) {
+  const lot = roadworkUnlockCandidate(index);
+  if (lot < 0) {
+    state.newlyUnlockedCells = new Set();
+    return -1;
+  }
+  state.unlockQueue = state.unlockQueue.filter((queued) => queued !== lot);
+  state.unlockedLots.add(lot);
+  state.newlyUnlockedCells = new Set([lot]);
+  return lot;
 }
 
 function useCrane(index) {
@@ -705,7 +764,7 @@ function openStallAtPark(index) {
 }
 
 function consumeSpecial(index) {
-  state.current = state.next;
+  state.current = normalizeQueuedCard(state.next);
   state.turns += 1;
   state.movesLeft = Math.max(0, state.movesLeft - 1);
   state.lastPlaced = index;
@@ -733,10 +792,10 @@ function finishTurn(didMerge, vibration, shouldCheckGoal) {
 }
 
 function advanceCardQueue() {
-  state.next = state.afterNext;
-  state.afterNext = drawLevel();
+  state.next = normalizeQueuedCard(state.afterNext);
+  state.afterNext = normalizeQueuedCard(drawLevel(), new Set(state.next < 0 ? [state.next] : []));
   if (state.next < 0 && state.afterNext === state.next) {
-    state.afterNext = drawLevel();
+    state.afterNext = drawReplacementCard(new Set([state.next]));
   }
 }
 
@@ -748,15 +807,39 @@ function queueRescueCard(card) {
   return true;
 }
 
+function normalizeQueuedCard(card, excluded = new Set()) {
+  if ((card === ROAD_CREW && !hasRoadCrewMove()) || excluded.has(card)) {
+    return drawReplacementCard(excluded);
+  }
+  return card;
+}
+
+function drawReplacementCard(excluded = new Set()) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const card = drawLevel();
+    if (card === ROAD_CREW && !hasRoadCrewMove()) {
+      continue;
+    }
+    if (excluded.has(card)) {
+      continue;
+    }
+    return card;
+  }
+  return 1;
+}
+
 function hasPlayableMove() {
   if (state.current === CLEANUP) {
-    return emptyCount() > 0 || trashCount() > 0 || blockedLotCount() > 0;
+    return emptyCount() > 0 || trashCount() > 0;
   }
   if (state.current === CRANE) {
     return constructionCount() > 0 || state.grid.some((level) => isBuilding(level) && level < MAX_LEVEL);
   }
   if (state.current === STALL) {
     return parkCount() > 0 || emptyCount() > 0;
+  }
+  if (state.current === ROAD_CREW) {
+    return hasRoadCrewMove();
   }
   return emptyCount() > 0;
 }
@@ -950,11 +1033,8 @@ function renderBoard(force = false) {
       if (state.newlyBlockedCells.has(index)) {
         classes.push("just-blocked");
       }
-      if (state.current === CLEANUP && preview) {
-        classes.push("clean-ready");
-      }
       if (hintMode === "unblock") {
-        classes.push("hint-ready", "clean-ready");
+        classes.push("hint-ready", "road-ready");
       }
     } else if (level) {
       classes.push("filled", `level-${level}`);
@@ -975,6 +1055,12 @@ function renderBoard(force = false) {
       if (preview) {
         classes.push("placeable");
       }
+      if (state.current === CLEANUP && preview?.tidy) {
+        classes.push("cleanup-ready");
+      }
+      if (state.current === ROAD_CREW && preview?.roadwork) {
+        classes.push("roadwork-ready");
+      }
       if (state.newlyUnlockedCells.has(index)) {
         classes.push("just-unlocked");
       }
@@ -984,6 +1070,8 @@ function renderBoard(force = false) {
         classes.push("hint-ready", "clean-ready");
       } else if (hintMode === "park") {
         classes.push("hint-ready", "recommend-ready");
+      } else if (hintMode === "roadwork") {
+        classes.push("hint-ready");
       } else if (hintMode === "prep" || hintMode === "seed") {
         classes.push("hint-ready", "recommend-ready");
       }
@@ -1011,7 +1099,7 @@ function renderBoard(force = false) {
         style="${style.join(";")}"
         type="button"
         data-index="${index}"
-        aria-label="${level ? tileName(level) : blocked ? "通行止め。清掃車で開けられます" : unlocked ? "空き地" : "まだ使えない区画。ミッションで開きます"}"
+        aria-label="${level ? tileName(level) : blocked ? "通行止め。道路班で開けられます" : unlocked ? "空き地" : "まだ使えない区画。ミッションで開きます"}"
       >
         ${renderTileInner(level, hintMode, unlocked, blocked)}
       </button>
@@ -1056,6 +1144,8 @@ function renderTileInner(level, hintMode, unlocked = true, blocked = false) {
         ? "整備"
         : hintMode === "unblock"
           ? "開ける"
+        : hintMode === "roadwork"
+          ? "道"
         : hintMode === "park"
           ? "公園"
         : hintMode === "prep" || hintMode === "seed"
@@ -1159,7 +1249,7 @@ function previewPlacement(index, level) {
     return null;
   }
   if (isLotBlocked(index)) {
-    return level === CLEANUP ? { merge: false, groupSize: 0, unblock: true } : null;
+    return level === ROAD_CREW ? { merge: false, groupSize: 0, unblock: true } : null;
   }
   if (level === CLEANUP) {
     if (state.grid[index] === TRASH) {
@@ -1180,6 +1270,13 @@ function previewPlacement(index, level) {
       return state.grid[index] === PARK ? { merge: false, groupSize: 1, stall: true } : null;
     }
     return state.grid[index] ? null : { merge: false, groupSize: 0, park: true };
+  }
+  if (level === ROAD_CREW) {
+    if (state.grid[index]) {
+      return null;
+    }
+    const openedLot = roadworkUnlockCandidate(index);
+    return { merge: false, groupSize: 0, roadwork: true, opensLot: openedLot >= 0 };
   }
   if (state.grid[index]) {
     return null;
@@ -1258,6 +1355,9 @@ function placementMode(preview) {
   if (preview.park) {
     return "park";
   }
+  if (preview.roadwork) {
+    return "roadwork";
+  }
   if (preview.bad) {
     return "bad";
   }
@@ -1299,6 +1399,9 @@ function scorePlacement(index, level, preview, mode, distance) {
   if (mode === "park") {
     return 2100 + occupiedNeighbors * 130 + emptyNeighbors * 38 - distance * 12 + jitter;
   }
+  if (mode === "roadwork") {
+    return 3850 + (preview.opensLot ? 980 : 0) + edge * 55 + emptyNeighbors * 34 - distance * 14 + jitter;
+  }
   if (mode === "bad") {
     return 2600 + distance * 62 + edge * 120 - occupiedNeighbors * 35 + jitter;
   }
@@ -1314,7 +1417,7 @@ function scorePlacement(index, level, preview, mode, distance) {
 }
 
 function recommendationSpread(mode) {
-  if (["clean", "unblock", "tidy", "crane", "upgrade", "stall", "merge"].includes(mode)) {
+  if (["clean", "unblock", "tidy", "crane", "upgrade", "stall", "roadwork", "merge"].includes(mode)) {
     return 95;
   }
   if (mode === "bad") {
@@ -1440,7 +1543,7 @@ function maybeBlockLots(didMerge, openedLotsThisTurn = false) {
   if (didMerge || openedLotsThisTurn) {
     return 0;
   }
-  if (["clean", "tidy", "open"].includes(state.effectMode)) {
+  if (["clean", "tidy", "open", "roadwork"].includes(state.effectMode)) {
     return 0;
   }
   if ([TRASH, CONSTRUCTION].includes(state.grid[state.lastPlaced])) {
@@ -1476,9 +1579,9 @@ function maybeBlockLots(didMerge, openedLotsThisTurn = false) {
 
   state.newlyBlockedCells = new Set(blocked);
   state.lastBlockTurn = state.turns;
-  queueRescueCard(CLEANUP);
+  queueRescueCard(ROAD_CREW);
   setReaction(blocked.length > 1 ? `通行止め ${blocked.length}マス` : "通行止め!", "bad");
-  setMessage(`${blocked.length}マスが通行止めに。清掃車で開けられます。`, "通行止め");
+  setMessage(`${blocked.length}マスが通行止めに。道路班で開けられます。`, "通行止め");
   return blocked.length;
 }
 
@@ -1489,6 +1592,33 @@ function blockableLotIndexes() {
     && !state.newlyUnlockedCells.has(index)
     && index !== state.lastPlaced
   ));
+}
+
+function hasRoadCrewMove() {
+  return blockedLotCount() > 0 || roadworkCandidateIndexes().length > 0;
+}
+
+function roadworkCandidateIndexes() {
+  return [...state.unlockedLots].filter((index) => canUseRoadCrewOnEmpty(index));
+}
+
+function canUseRoadCrewOnEmpty(index) {
+  if (!isLotUnlocked(index) || isLotBlocked(index) || state.grid[index]) {
+    return false;
+  }
+  return true;
+}
+
+function roadworkUnlockCandidate(index) {
+  if (state.unlockQueue.length === 0) {
+    return -1;
+  }
+  const adjacent = neighbors(index).filter((cell) => state.unlockQueue.includes(cell));
+  if (adjacent.length === 0) {
+    return -1;
+  }
+  adjacent.sort((a, b) => state.unlockQueue.indexOf(a) - state.unlockQueue.indexOf(b));
+  return adjacent[0];
 }
 
 function unlockedLotCount() {
@@ -1627,20 +1757,34 @@ function setReaction(text, tone = "good") {
 function updatePlacementMessage() {
   if (state.current === CLEANUP) {
     const hasTrash = trashCount() > 0;
-    const hasBlocked = blockedLotCount() > 0;
-    if (hasTrash && hasBlocked) {
-      setHint("清掃班", `ゴミ屋敷を片づけるか、通行止めを開けられます。空き区画なら整備でスコア +${formatNumber(CLEANUP_EMPTY_BONUS)}。`);
-      return;
-    }
-    if (hasBlocked) {
-      setHint("清掃班", `通行止めを開けられます。空き区画を整えると、スコア +${formatNumber(CLEANUP_EMPTY_BONUS)}、手数+${CLEANUP_MOVE_BONUS - 1}。`);
-      return;
-    }
     if (hasTrash) {
       setHint("清掃班", `ゴミ屋敷なら片づけて +${formatNumber(CLEANUP_BONUS)}。空き区画なら整備で +${formatNumber(CLEANUP_EMPTY_BONUS)}、手数+${CLEANUP_MOVE_BONUS - 1}。`);
       return;
     }
     setHint("清掃班", `空き区画をタップすると整備。スコア +${formatNumber(CLEANUP_EMPTY_BONUS)}、手数+${CLEANUP_MOVE_BONUS - 1}。マスは空いたままです。`);
+    return;
+  }
+  if (state.current === ROAD_CREW) {
+    const hasBlockedLot = blockedLotCount() > 0;
+    const hasEmptyLot = roadworkCandidateIndexes().length > 0;
+    const canOpenLot = roadworkCandidateIndexes().some((index) => roadworkUnlockCandidate(index) >= 0);
+    if (hasBlockedLot && canOpenLot) {
+      setHint("道路班", "止マークなら開通。外側に接した空き区画なら、区画を1マス開けます。");
+      return;
+    }
+    if (canOpenLot) {
+      setHint("道路班", `外側に接した空き区画なら、区画を1マス開けます。スコア +${formatNumber(ROAD_WORK_BONUS + ROAD_OPEN_BONUS)}。`);
+      return;
+    }
+    if (hasEmptyLot) {
+      setHint("道路班", `空き区画の道を整えます。スコア +${formatNumber(ROAD_WORK_BONUS)}。`);
+      return;
+    }
+    if (hasBlockedLot) {
+      setHint("道路班", `通行止めを開けます。開通するとスコア +${formatNumber(BLOCK_CLEAR_BONUS)}、手数+${CLEANUP_MOVE_BONUS - 1}。`);
+      return;
+    }
+    setHint("道路班", `空き区画の道を整えます。スコア +${formatNumber(ROAD_WORK_BONUS)}。`);
     return;
   }
   if (state.current === CRANE) {
@@ -2016,8 +2160,382 @@ function hideGameSet() {
 function showResultOverlay() {
   state.resultTimer = 0;
   hideGameSet();
+  refreshRecommendationCards();
   dom.resultOverlay.classList.add("show");
   dom.resultOverlay.setAttribute("aria-hidden", "false");
+}
+
+async function refreshRecommendationCards() {
+  const refreshId = ++recommendationRefreshId;
+  const cards = Array.from(document.querySelectorAll(".recommend-card[href]"));
+  const targets = uniqueRecommendationTargets(cards);
+  await Promise.all(
+    targets.map(async ({ pageUrl, directIconUrl, shouldReadPage }) => {
+      if (directIconUrl) {
+        applyRecommendationIcon(pageUrl, directIconUrl);
+      }
+      if (!shouldReadPage) {
+        return;
+      }
+      const metadata = await resolveRecommendationMetadata(pageUrl);
+      if (refreshId !== recommendationRefreshId) {
+        return;
+      }
+      if (!metadata) {
+        clearRecommendationByPage(pageUrl);
+        return;
+      }
+      applyRecommendationMetadata(pageUrl, metadata);
+      if (metadata.iconUrl) {
+        applyRecommendationIcon(pageUrl, metadata.iconUrl);
+      }
+    }),
+  );
+}
+
+function uniqueRecommendationTargets(cards) {
+  const targets = new Map();
+  for (const card of cards) {
+    const pageUrl = normalizePageUrl(card.dataset.metaPage || card.dataset.iconPage || card.href);
+    if (!pageUrl || targets.has(pageUrl)) {
+      continue;
+    }
+    const directIconUrl = safeAbsoluteIconUrl(card.dataset.iconSrc, card.href);
+    targets.set(pageUrl, {
+      pageUrl,
+      directIconUrl,
+      shouldReadPage: Boolean(card.dataset.metaPage || card.dataset.iconPage || !directIconUrl),
+    });
+  }
+  return Array.from(targets.values());
+}
+
+async function resolveRecommendationMetadata(pageUrl) {
+  try {
+    const response = await fetch(withFreshQuery(pageUrl), { cache: "no-store" });
+    if (!response.ok) {
+      return null;
+    }
+    const html = await response.text();
+    const documentSnapshot = new DOMParser().parseFromString(html, "text/html");
+    const jsonLd = readJsonLdMetadata(documentSnapshot);
+    const manifest = await findManifestMetadata(documentSnapshot, pageUrl);
+    return {
+      title: firstText(
+        metaContent(documentSnapshot, ["meta[name='game:title']", "meta[name='application-name']", "meta[name='apple-mobile-web-app-title']"]),
+        jsonLd.title,
+        manifest.title,
+        metaContent(documentSnapshot, ["meta[property='og:site_name']", "meta[property='og:title']", "meta[name='twitter:title']"]),
+        documentSnapshot.querySelector("title")?.textContent,
+      ),
+      genre: firstGenre(jsonLd.genre),
+      description: firstText(
+        metaContent(documentSnapshot, ["meta[name='game:description']", "meta[property='og:description']", "meta[name='description']", "meta[name='twitter:description']"]),
+        jsonLd.description,
+        manifest.description,
+      ),
+      iconUrl: firstText(findPageIcon(documentSnapshot, pageUrl), manifest.iconUrl),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function findPageIcon(documentSnapshot, pageUrl) {
+  const links = Array.from(documentSnapshot.querySelectorAll("link[rel][href]"));
+  const preferred =
+    links.find((link) => link.rel.toLowerCase().includes("apple-touch-icon")) ||
+    links.find((link) => link.rel.toLowerCase().split(/\s+/).includes("icon"));
+  if (!preferred) {
+    return "";
+  }
+  return safeAbsoluteIconUrl(preferred.getAttribute("href"), pageUrl);
+}
+
+async function findManifestMetadata(documentSnapshot, pageUrl) {
+  const manifest = Array.from(documentSnapshot.querySelectorAll("link[rel][href]")).find((link) =>
+    link.rel.toLowerCase().split(/\s+/).includes("manifest"),
+  );
+  if (!manifest) {
+    return {};
+  }
+  const manifestUrl = safeAbsoluteIconUrl(manifest.getAttribute("href"), pageUrl);
+  if (!manifestUrl || manifestUrl.startsWith("data:")) {
+    return {};
+  }
+  try {
+    const response = await fetch(withFreshQuery(manifestUrl), { cache: "no-store" });
+    if (!response.ok) {
+      return {};
+    }
+    const data = await response.json();
+    const icons = Array.isArray(data.icons) ? data.icons : [];
+    const bestIcon = icons
+      .filter((icon) => icon?.src)
+      .map((icon) => ({
+        src: safeAbsoluteIconUrl(icon.src, manifestUrl),
+        size: largestIconSize(icon.sizes),
+      }))
+      .filter((icon) => icon.src)
+      .sort((a, b) => b.size - a.size)[0];
+    return {
+      title: firstText(data.name, data.short_name),
+      description: firstText(data.description),
+      iconUrl: bestIcon?.src || "",
+    };
+  } catch {
+    return {};
+  }
+}
+
+function readJsonLdMetadata(documentSnapshot) {
+  const entries = Array.from(documentSnapshot.querySelectorAll("script[type='application/ld+json']"))
+    .flatMap((script) => parseJsonLdEntries(script.textContent));
+  const preferred = entries.find((entry) => hasJsonLdType(entry, ["VideoGame", "Game", "SoftwareApplication", "WebApplication"])) || entries[0];
+  if (!preferred) {
+    return {};
+  }
+  return {
+    title: firstText(preferred.name, preferred.headline),
+    description: firstText(preferred.description),
+    genre: firstGenre(preferred.genre),
+  };
+}
+
+function parseJsonLdEntries(text) {
+  try {
+    const data = JSON.parse(text);
+    return flattenJsonLd(data);
+  } catch {
+    return [];
+  }
+}
+
+function flattenJsonLd(value) {
+  if (Array.isArray(value)) {
+    return value.flatMap(flattenJsonLd);
+  }
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+  const entries = [value];
+  if (Array.isArray(value["@graph"])) {
+    entries.push(...value["@graph"].flatMap(flattenJsonLd));
+  }
+  return entries;
+}
+
+function hasJsonLdType(entry, types) {
+  const rawType = entry?.["@type"];
+  const entryTypes = Array.isArray(rawType) ? rawType : [rawType];
+  return entryTypes.some((type) => types.includes(type));
+}
+
+function metaContent(documentSnapshot, selectors) {
+  for (const selector of selectors) {
+    const element = documentSnapshot.querySelector(selector);
+    const value = element?.getAttribute("content") || element?.textContent;
+    if (normalizeText(value)) {
+      return value;
+    }
+  }
+  return "";
+}
+
+function firstText(...values) {
+  for (const value of values) {
+    const text = normalizeText(value);
+    if (text) {
+      return text;
+    }
+  }
+  return "";
+}
+
+function firstGenre(...values) {
+  for (const value of values) {
+    const genres = Array.isArray(value) ? value : String(value || "").split(/[、,/|｜]/);
+    const genre = genres.map(normalizeText).find((item) => item && !["games", "entertainment", "browser"].includes(item.toLowerCase()));
+    if (genre) {
+      return genre;
+    }
+  }
+  return "";
+}
+
+function normalizeText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function largestIconSize(sizes) {
+  if (typeof sizes !== "string") {
+    return 0;
+  }
+  return sizes
+    .split(/\s+/)
+    .map((size) => {
+      const match = size.match(/^(\d+)x(\d+)$/i);
+      return match ? Number(match[1]) * Number(match[2]) : 0;
+    })
+    .reduce((max, size) => Math.max(max, size), 0);
+}
+
+function applyRecommendationMetadata(pageUrl, metadata) {
+  for (const card of document.querySelectorAll(".recommend-card[href]")) {
+    if (normalizePageUrl(card.href) !== pageUrl) {
+      continue;
+    }
+    card.classList.remove("is-unavailable");
+    const title = cleanRecommendationTitle(metadata.title);
+    const genre = normalizeText(metadata.genre);
+    const description = compactRecommendationDescription(metadata.description);
+    const genreNode = card.querySelector(".recommend-card-copy em");
+    const titleNode = card.querySelector(".recommend-card-copy strong");
+    const descriptionNode = card.querySelector(".recommend-card-copy small");
+    if (genreNode) {
+      genreNode.textContent = genre;
+    }
+    if (title && titleNode) {
+      titleNode.textContent = title;
+      card.setAttribute("aria-label", `おすすめゲーム: ${title}`);
+    }
+    if (description && descriptionNode) {
+      descriptionNode.textContent = description;
+    }
+  }
+}
+
+function clearRecommendationMetadata(card) {
+  card.classList.add("is-unavailable");
+  card.setAttribute("aria-label", "おすすめゲーム");
+  const genreNode = card.querySelector(".recommend-card-copy em");
+  const titleNode = card.querySelector(".recommend-card-copy strong");
+  const descriptionNode = card.querySelector(".recommend-card-copy small");
+  if (genreNode) {
+    genreNode.textContent = "";
+  }
+  if (titleNode) {
+    titleNode.textContent = "";
+  }
+  if (descriptionNode) {
+    descriptionNode.textContent = "";
+  }
+}
+
+function clearRecommendationByPage(pageUrl) {
+  for (const card of document.querySelectorAll(".recommend-card[href]")) {
+    if (normalizePageUrl(card.href) !== pageUrl) {
+      continue;
+    }
+    clearRecommendationMetadata(card);
+    const art = card.querySelector(".recommend-card-art");
+    const image = art?.querySelector(".recommend-favicon");
+    art?.classList.remove("is-favicon-loaded");
+    art?.classList.add("is-favicon-empty");
+    image?.removeAttribute("src");
+  }
+}
+
+function cleanRecommendationTitle(value) {
+  const text = normalizeText(value);
+  if (!text) {
+    return "";
+  }
+  return text.split(/\s*(?:\||｜| - | – | — )\s*/)[0] || text;
+}
+
+function compactRecommendationDescription(value) {
+  const text = normalizeText(value);
+  if (!text) {
+    return "";
+  }
+  const firstSentence = text.split(/[。.!?！？]/)[0] || text;
+  const clauses = firstSentence.split(/[、,]/).map(normalizeText).filter(Boolean);
+  const compact = clauses.length > 1 ? clauses[0] : firstSentence;
+  return compact.length > 34 ? compact.slice(0, 34) : compact;
+}
+
+function applyRecommendationIcon(pageUrl, iconUrl) {
+  const freshIconUrl = withFreshQuery(iconUrl);
+  for (const card of document.querySelectorAll(".recommend-card[href]")) {
+    if (normalizePageUrl(card.href) !== pageUrl) {
+      continue;
+    }
+    const art = card.querySelector(".recommend-card-art");
+    if (!art) {
+      continue;
+    }
+    let image = art.querySelector(".recommend-favicon");
+    if (!image) {
+      image = document.createElement("img");
+      image.className = "recommend-favicon";
+      image.alt = "";
+      image.decoding = "async";
+      image.loading = "eager";
+      art.append(image);
+    }
+    art.classList.remove("is-favicon-empty");
+    image.addEventListener(
+      "load",
+      () => {
+        art.classList.remove("is-favicon-empty");
+        art.classList.add("is-favicon-loaded");
+      },
+      { once: true },
+    );
+    image.addEventListener(
+      "error",
+      () => {
+        art.classList.remove("is-favicon-loaded");
+        art.classList.add("is-favicon-empty");
+        image.removeAttribute("src");
+        if (!card.dataset.metaPage && !card.dataset.iconPage) {
+          clearRecommendationMetadata(card);
+        }
+      },
+      { once: true },
+    );
+    image.src = freshIconUrl;
+  }
+}
+
+function normalizePageUrl(value) {
+  try {
+    const url = new URL(value, window.location.href);
+    url.hash = "";
+    url.search = "";
+    return url.href;
+  } catch {
+    return "";
+  }
+}
+
+function safeAbsoluteIconUrl(value, baseUrl) {
+  if (!value) {
+    return "";
+  }
+  try {
+    const url = new URL(value, baseUrl);
+    if (url.protocol === "data:") {
+      return url.href.startsWith("data:image/") ? url.href : "";
+    }
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function withFreshQuery(value) {
+  if (!value || value.startsWith("data:")) {
+    return value;
+  }
+  try {
+    const url = new URL(value, window.location.href);
+    url.searchParams.set("machiIcon", String(Date.now()));
+    return url.href;
+  } catch {
+    return value;
+  }
 }
 
 function renderResultHighlights(record) {
@@ -2084,6 +2602,10 @@ function getResultNextMoves(record, previousBest) {
 
   if (trashCount() > 0) {
     moves.push({ label: "清掃班", value: "ゴミ屋敷を片づける" });
+  }
+
+  if (blockedLotCount() > 0) {
+    moves.push({ label: "道路班", value: "通行止めを開ける" });
   }
 
   if (constructionCount() > 0) {

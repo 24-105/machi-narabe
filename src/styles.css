@@ -866,16 +866,17 @@ button {
   box-shadow: inset 0 0 0 1px rgba(191, 78, 67, 0.12);
 }
 
-.tile.blocked.clean-ready {
-  border-color: #2b86a3;
+.tile.blocked.road-ready {
+  border-color: #466978;
   background:
     radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.78), transparent 42%),
     repeating-linear-gradient(
       135deg,
-      rgba(43, 134, 163, 0.2) 0 6px,
+      rgba(70, 105, 120, 0.22) 0 6px,
       rgba(255, 255, 255, 0.08) 6px 12px
     ),
-    #dff2f7;
+    #e6eff1;
+  animation: hint-pulse 1100ms ease-in-out infinite;
 }
 
 .blocked-mark {
@@ -898,8 +899,8 @@ button {
   transform: translate(-50%, -50%);
 }
 
-.tile.blocked.clean-ready .blocked-mark {
-  background: #2b86a3;
+.tile.blocked.road-ready .blocked-mark {
+  background: #466978;
 }
 
 .blocked-label {
@@ -935,6 +936,40 @@ button {
     0 0 0 1px rgba(43, 134, 163, 0.18);
 }
 
+.tile.cleanup-ready:not(.hint-ready) {
+  border-color: rgba(43, 134, 163, 0.28);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(43, 134, 163, 0.15) 0 3px, transparent 4px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.12)),
+    #f4fbfc;
+  box-shadow:
+    inset 0 0 0 1px rgba(43, 134, 163, 0.12),
+    0 0 0 1px rgba(43, 134, 163, 0.08);
+  animation: cleanup-glow 1500ms ease-in-out infinite;
+}
+
+.tile.roadwork-ready:not(.hint-ready) {
+  border-color: rgba(70, 105, 120, 0.28);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(70, 105, 120, 0.16) 0 3px, transparent 4px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.12)),
+    #f2f7f7;
+  box-shadow:
+    inset 0 0 0 1px rgba(70, 105, 120, 0.12),
+    0 0 0 1px rgba(70, 105, 120, 0.08);
+}
+
+.tile.roadwork-ready.hint-ready {
+  border-color: #466978;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.12)),
+    #e6eff1;
+  box-shadow:
+    inset 0 0 0 2px rgba(70, 105, 120, 0.34),
+    0 0 0 1px rgba(70, 105, 120, 0.82);
+  animation: hint-pulse 1100ms ease-in-out infinite;
+}
+
 .tile.recommend-ready {
   border-color: var(--amber);
   background:
@@ -963,6 +998,10 @@ button {
 
 .tile.recommend-ready .ghost-mark {
   opacity: 0.42;
+}
+
+.tile.roadwork-ready .ghost-mark {
+  opacity: 0.36;
 }
 
 .tile.hint-ready .empty-label {
@@ -1087,7 +1126,8 @@ button {
 
 .tile.effect-tidy,
 .tile.effect-clean,
-.tile.effect-open {
+.tile.effect-open,
+.tile.effect-roadwork {
   border-color: #2b86a3;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.22)),
@@ -1097,7 +1137,8 @@ button {
 
 .tile.effect-tidy::before,
 .tile.effect-clean::before,
-.tile.effect-open::before {
+.tile.effect-open::before,
+.tile.effect-roadwork::before {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1127,6 +1168,19 @@ button {
 
 .tile.effect-open::before {
   content: "開通";
+}
+
+.tile.effect-roadwork {
+  border-color: #466978;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.22)),
+    #e6eff1;
+}
+
+.tile.effect-roadwork::before {
+  background: #466978;
+  box-shadow: 0 6px 14px rgba(70, 105, 120, 0.22);
+  content: "道";
 }
 
 .tile.effect-epic {
@@ -1416,22 +1470,22 @@ button {
 
 .card-art {
   left: 50%;
-  top: 23px;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  top: 22px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   transform: translateX(-50%);
 }
 
 .card .card-art b {
-  font-size: 1.18rem;
+  font-size: 1.08rem;
 }
 
 .card-name {
   position: absolute;
   left: 8px;
   right: 8px;
-  bottom: 6px;
+  bottom: 4px;
   overflow: hidden;
   font-size: 0.88rem;
   font-weight: 950;
@@ -2047,9 +2101,11 @@ button {
   gap: 9px;
 }
 
-.result-headline h2 {
+.modal-card .result-headline h2 {
   margin: 0;
-  font-size: 1.32rem;
+  font-size: clamp(0.92rem, 4.6vw, 1.28rem);
+  line-height: 1.08;
+  white-space: nowrap;
 }
 
 .result-grade-pill {
@@ -2070,8 +2126,8 @@ button {
 
 .result-player {
   display: grid;
-  min-width: 88px;
-  max-width: 122px;
+  min-width: 86px;
+  max-width: 100px;
   gap: 3px;
   border: 1px solid rgba(22, 35, 41, 0.1);
   border-radius: 8px;
@@ -2563,6 +2619,16 @@ button {
   overflow: hidden;
 }
 
+.recommend-card-art.is-favicon-loaded {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.26)),
+    #ffffff;
+}
+
+.recommend-card-art.is-favicon-empty {
+  background: #ffffff;
+}
+
 .recommend-card-art::before {
   position: absolute;
   inset: auto -4px 4px;
@@ -2570,6 +2636,36 @@ button {
   border-radius: 999px;
   background: rgba(124, 74, 0, 0.12);
   content: "";
+}
+
+.recommend-card-art.is-favicon-loaded::before,
+.recommend-card-art.is-favicon-empty::before {
+  display: none;
+}
+
+.recommend-favicon {
+  position: absolute;
+  inset: 7px;
+  z-index: 2;
+  width: calc(100% - 14px);
+  height: calc(100% - 14px);
+  object-fit: contain;
+  opacity: 0;
+  visibility: hidden;
+  filter: drop-shadow(0 4px 7px rgba(7, 12, 15, 0.16));
+}
+
+.recommend-card-art.is-favicon-loaded .recommend-favicon {
+  opacity: 1;
+  visibility: visible;
+}
+
+.recommend-card-art.is-favicon-loaded > span {
+  opacity: 0;
+}
+
+.recommend-card-art.is-favicon-empty > span {
+  opacity: 0;
 }
 
 .recommend-card-art-kameposu {
@@ -2710,6 +2806,10 @@ button {
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.recommend-card em:empty {
+  display: none;
 }
 
 .recommend-card strong {
@@ -3081,6 +3181,24 @@ button {
   }
 }
 
+@keyframes cleanup-glow {
+  0%,
+  100% {
+    filter: brightness(1);
+    box-shadow:
+      inset 0 0 0 1px rgba(43, 134, 163, 0.12),
+      0 0 0 1px rgba(43, 134, 163, 0.08);
+  }
+
+  50% {
+    filter: brightness(1.045);
+    box-shadow:
+      inset 0 0 0 1px rgba(43, 134, 163, 0.18),
+      0 0 0 2px rgba(43, 134, 163, 0.16),
+      0 0 10px rgba(43, 134, 163, 0.12);
+  }
+}
+
 @keyframes finish-pop {
   0% {
     opacity: 0;
@@ -3188,13 +3306,13 @@ button {
   }
 
   .card-art {
-    top: 22px;
-    width: 34px;
-    height: 34px;
+    top: 21px;
+    width: 31px;
+    height: 31px;
   }
 
   .card-name {
-    bottom: 6px;
+    bottom: 4px;
     font-size: 0.82rem;
   }
 
