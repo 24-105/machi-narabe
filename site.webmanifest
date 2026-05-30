@@ -1,0 +1,20 @@
+{
+  "name": "まちならべ",
+  "short_name": "まちならべ",
+  "description": "3つつなげるスマホ街パズル",
+  "lang": "ja",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef0eb",
+  "theme_color": "#162329",
+  "categories": ["games", "entertainment", "puzzle"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
