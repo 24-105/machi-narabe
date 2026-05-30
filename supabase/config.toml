@@ -1,0 +1,2 @@
+[functions.machi-ranking]
+verify_jwt = false

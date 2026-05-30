@@ -80,16 +80,25 @@
     <main class="game-shell">
       <header class="topbar">
         <div class="brand">
+          <span>小さな街の区画パズル</span>
           <h1>まちならべ</h1>
         </div>
         <div class="top-actions">
           <button
-            class="top-recommend-button"
+            class="top-menu-button ranking-menu-button"
+            id="rankingButton"
+            type="button"
+            aria-label="ランキングを見る"
+          >
+            記録
+          </button>
+          <button
+            class="top-menu-button recommend-menu-button"
             id="recommendButton"
             type="button"
             aria-label="おすすめゲームを見る"
           >
-            おすすめ
+            よりみち
           </button>
           <button
             class="icon-button"
@@ -104,21 +113,19 @@
 
       <section class="score-strip" aria-label="状況">
         <div class="stat-card timer-card">
-          <span>残り手数</span>
+          <span>作業手数</span>
           <strong id="timeValue">28</strong>
           <i id="timeBar"></i>
         </div>
         <div class="stat-card score-card">
           <span>スコア</span>
           <strong id="scoreValue">0</strong>
+          <small class="best-inline">ベスト <b id="bestValue">0</b></small>
+          <small id="scoreDelta" class="score-delta" aria-hidden="true"></small>
         </div>
-        <div class="stat-card">
-          <span>コンボ</span>
+        <div class="stat-card combo-card">
+          <span>つながり</span>
           <strong id="chainValue">0</strong>
-        </div>
-        <div class="stat-card">
-          <span>ベスト</span>
-          <strong id="bestValue">0</strong>
         </div>
       </section>
 
@@ -127,15 +134,15 @@
           <span id="targetMark">家</span>
         </div>
         <div class="goal-copy">
-          <span>ミッション</span>
+          <span>まち掲示板</span>
           <strong id="goalValue">住宅</strong>
           <small id="goalHint">作ると手数+6</small>
           <div
             class="evolution-rail"
             id="evolutionRail"
-            aria-label="建物の順番"
+            aria-label="まちの発展順"
           ></div>
-          <em id="eventValue">イベントなし</em>
+          <em id="eventValue">まち静か</em>
         </div>
         <div class="pressure-card">
           <span>空き地</span>
@@ -146,7 +153,12 @@
       <section class="board-wrap" aria-label="都市ボード">
         <div class="board-head">
           <div>
-            <span>街マップ</span>
+            <span>区画地図</span>
+            <strong id="boardStoryValue">中央から広げよう</strong>
+          </div>
+          <div class="board-progress" aria-label="区画の開放状況">
+            <span id="openedLotsValue">25/49</span>
+            <small id="unlockHintValue">あと2回</small>
           </div>
         </div>
         <div class="board-stage">
@@ -157,7 +169,7 @@
       <section class="hand-dock" aria-label="次に置くカード">
         <div class="hand-head">
           <div>
-            <span>ヒント</span>
+            <span>まちメモ</span>
             <strong id="dockTitle">小屋</strong>
             <p id="dockMessage">
               同じ建物の近くに置くと、3つそろえやすいです。
@@ -168,41 +180,55 @@
       </section>
 
       <section class="start-overlay show" id="startOverlay" aria-hidden="false">
-        <div class="modal-card">
-          <span>かんたんルール</span>
-          <h2>同じ建物を3つつなげよう</h2>
-          <p class="rule-lead">
-            下の大きなカードを空き地に置くだけ。3つそろうと、ひとつ上の建物に変わります。
-          </p>
-          <ol class="rule-steps">
-            <li>
-              <b>1</b><span><strong>置く</strong>空き地をタップ</span>
-            </li>
-            <li>
-              <b>2</b><span><strong>つながる</strong>同じ建物が3つ</span>
-            </li>
-            <li>
-              <b>3</b><span><strong>先読み</strong>次の2枚を見る</span>
-            </li>
-          </ol>
-          <div class="rule-notes">
-            <p>
-              <b>迷ったら</b
-              ><span>まずは光るマスでOK。慣れたら自分で場所を選ぼう。</span>
-            </p>
-            <p>
-              <b>アイテム</b
-              ><span
-                >清掃車やクレーンは、おじゃまを片づけたり、形を整えたりできます。</span
-              >
-            </p>
-            <p>
-              <b>公園</b
-              ><span>建物の近くに置くと、屋台が来た時にスコアが伸びます。</span>
-            </p>
+        <div class="modal-card rule-card">
+          <span>まち役場より</span>
+          <h2>空き地から街を広げよう</h2>
+          <div class="rule-story" aria-label="ゲームの目標">
+            <span>今日のお願い</span>
+            <strong>中央の区画から、ランドマークまでつなげよう</strong>
+          </div>
+          <div class="rule-demo" aria-label="合体デモ">
+            <div class="demo-stage" aria-hidden="true">
+              <span class="demo-tile demo-tile-a"><b>小</b></span>
+              <span class="demo-tile demo-tile-b"><b>小</b></span>
+              <span class="demo-tile demo-tile-c"><b>小</b></span>
+              <span class="demo-arrow">→</span>
+              <span class="demo-result"><b>家</b></span>
+            </div>
+            <p><b>小屋が3つ</b><span>つながると住宅に合体</span></p>
+          </div>
+          <div class="rule-visual-grid" aria-label="遊び方のポイント">
+            <div class="rule-visual-card">
+              <span class="rule-mini-board rule-mini-board-lot" aria-hidden="true">
+                <i></i><i></i><i></i><i></i>
+              </span>
+              <strong>空き区画</strong>
+              <small>ここに置く</small>
+            </div>
+            <div class="rule-visual-card">
+              <span class="rule-mini-board rule-mini-board-lock" aria-hidden="true">
+                <i></i><i></i><i></i><i></i>
+              </span>
+              <strong>工事待ち</strong>
+              <small>あとで開く</small>
+            </div>
+            <div class="rule-visual-card">
+              <span class="rule-mini-board rule-mini-board-open" aria-hidden="true">
+                <i></i><i></i><i></i><i></i>
+              </span>
+              <strong>掲示板</strong>
+              <small>お願いを達成</small>
+            </div>
+            <div class="rule-visual-card">
+              <span class="rule-mini-board rule-mini-board-item" aria-hidden="true">
+                <i></i><i></i><i></i><i></i>
+              </span>
+              <strong>街の道具</strong>
+              <small>困りごとに使う</small>
+            </div>
           </div>
           <button class="big-button" id="overlayStartButton" type="button">
-            開始
+            はじめる
           </button>
         </div>
       </section>
@@ -215,8 +241,8 @@
           aria-labelledby="resetTitle"
         >
           <span>リセット確認</span>
-          <h2 id="resetTitle">最初からやり直す？</h2>
-          <p>今の街とスコアは消えます。</p>
+          <h2 id="resetTitle">この街を作り直す？</h2>
+          <p>今の街並みとスコアは消えます。</p>
           <div class="confirm-actions">
             <button
               class="secondary-button"
@@ -234,7 +260,7 @@
 
       <section class="game-set-overlay" id="gameSetOverlay" aria-hidden="true">
         <div class="game-set-flash" role="status" aria-live="polite">
-          <span>ゲームセット</span>
+          <span>本日の街づくり終了</span>
           <strong id="gameSetScoreValue">0</strong>
         </div>
       </section>
@@ -246,28 +272,77 @@
           aria-modal="true"
           aria-labelledby="resultTitle"
         >
-          <span id="gradeValue">初</span>
-          <h2 id="resultTitle">結果</h2>
-          <div class="result-score" id="finalScoreValue">0</div>
-          <p id="resultMessage">まずは3つそろえる形を覚えよう。</p>
-          <div class="result-grid">
+          <div class="result-headline">
             <div>
-              <span>最大建物</span>
-              <strong id="finalLevelValue">小屋</strong>
+              <span id="gradeValue" class="result-grade-pill">初</span>
+              <h2 id="resultTitle">まちの記録</h2>
             </div>
-            <div>
-              <span>コンボ</span>
-              <strong id="finalChainValue">0</strong>
-            </div>
-            <div>
-              <span>置いた数</span>
-              <strong id="finalTurnsValue">0</strong>
+            <div class="result-player">
+              <span>街の呼び名</span>
+              <strong id="resultPlayerName">-</strong>
             </div>
           </div>
+          <div class="result-insight">
+            <div>
+              <span>記録所順位</span>
+              <strong id="resultRankValue">集計中</strong>
+            </div>
+            <div class="result-score-hero">
+              <span>スコア</span>
+              <strong id="finalScoreValue">0</strong>
+            </div>
+            <p id="resultMessage">まずは3つそろえる形を覚えよう。</p>
+          </div>
+          <div class="result-retry-dock">
+            <button
+              class="big-button result-retry-button"
+              id="againButton"
+              type="button"
+            >
+              次の街を作る
+            </button>
+          </div>
+          <div class="result-divider">
+            <span>次のまちメモ</span>
+          </div>
+          <div
+            class="retry-cues"
+            id="resultNextMoves"
+            aria-label="次回のコツ"
+          ></div>
+          <div
+            class="result-highlight-strip"
+            id="resultHighlights"
+            aria-label="今回の見どころ"
+          ></div>
+          <details class="result-detail-panel">
+            <summary>街の内訳を見る</summary>
+            <div class="result-grid">
+              <div>
+                <span>街の目玉</span>
+                <strong id="finalLevelValue">小屋</strong>
+              </div>
+              <div>
+                <span>つながり</span>
+                <strong id="finalChainValue">0</strong>
+              </div>
+              <div>
+                <span>置いた数</span>
+                <strong id="finalTurnsValue">0</strong>
+              </div>
+            </div>
+          </details>
+          <section class="ranking-panel result-ranking-panel" aria-label="総合ランキング">
+            <div class="ranking-heading">
+              <span>まちの記録所</span>
+              <strong id="resultRankingStatus">確認中</strong>
+            </div>
+            <ol id="resultRankingList" class="ranking-list"></ol>
+          </section>
           <section class="recommend-panel" aria-label="おすすめのゲーム">
             <div class="recommend-heading">
-              <span>おすすめ</span>
-              <strong>スマホで遊べる</strong>
+              <span>よりみち</span>
+              <strong>ほかの街へ</strong>
             </div>
             <div class="recommend-list">
               <a
@@ -287,10 +362,50 @@
                 </span>
                 <b aria-hidden="true">遊ぶ</b>
               </a>
+              <a
+                class="recommend-card"
+                href="https://24-105.github.io/kameposu/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="おすすめゲーム: かめぽす便"
+              >
+                <span class="recommend-card-art recommend-card-art-kameposu" aria-hidden="true">
+                  <span class="recommend-kameposu-icon"></span>
+                </span>
+                <span class="recommend-card-copy">
+                  <em>1分配達アクション</em>
+                  <strong>かめぽす便</strong>
+                  <small>荷物を拾って家まで届ける</small>
+                </span>
+                <b aria-hidden="true">遊ぶ</b>
+              </a>
             </div>
           </section>
-          <button class="big-button" id="againButton" type="button">
-            もう一回
+        </div>
+      </section>
+
+      <section class="ranking-overlay" id="rankingOverlay" aria-hidden="true">
+        <div
+          class="modal-card ranking-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rankingTitle"
+        >
+          <span>まちの記録所</span>
+          <h2 id="rankingTitle">まちの記録所</h2>
+          <section class="ranking-panel" aria-label="総合ランキング一覧">
+            <div class="ranking-heading">
+              <span>上位10件</span>
+              <strong id="rankingStatus">確認中</strong>
+            </div>
+            <ol id="overallRankingList" class="ranking-list"></ol>
+          </section>
+          <button
+            class="secondary-button full-button"
+            id="closeRankingButton"
+            type="button"
+          >
+            地図に戻る
           </button>
         </div>
       </section>
@@ -306,11 +421,11 @@
           aria-modal="true"
           aria-labelledby="recommendTitle"
         >
-          <span>ゲーム紹介</span>
-          <h2 id="recommendTitle">おすすめゲーム</h2>
+          <span>よりみち案内</span>
+          <h2 id="recommendTitle">ほかの街で遊ぶ</h2>
           <section class="recommend-panel" aria-label="おすすめのゲーム">
             <div class="recommend-heading">
-              <span>ピックアップ</span>
+              <span>旅先リスト</span>
               <strong>スマホで遊べる</strong>
             </div>
             <div class="recommend-list">
@@ -331,6 +446,23 @@
                 </span>
                 <b aria-hidden="true">遊ぶ</b>
               </a>
+              <a
+                class="recommend-card"
+                href="https://24-105.github.io/kameposu/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="おすすめゲーム: かめぽす便"
+              >
+                <span class="recommend-card-art recommend-card-art-kameposu" aria-hidden="true">
+                  <span class="recommend-kameposu-icon"></span>
+                </span>
+                <span class="recommend-card-copy">
+                  <em>1分配達アクション</em>
+                  <strong>かめぽす便</strong>
+                  <small>荷物を拾って家まで届ける</small>
+                </span>
+                <b aria-hidden="true">遊ぶ</b>
+              </a>
             </div>
           </section>
           <button
@@ -338,12 +470,13 @@
             id="closeRecommendButton"
             type="button"
           >
-            閉じる
+            地図に戻る
           </button>
         </div>
       </section>
     </main>
 
+    <script src="./src/config.js"></script>
     <script src="./src/main.js" type="module"></script>
   </body>
 </html>
