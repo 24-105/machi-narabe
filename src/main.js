@@ -5,6 +5,8 @@ const START_MOVES = 60;
 const GOAL_MOVE_BONUS = 3;
 const GAME_SET_DELAY = 850;
 const BEST_KEY = "machi-narabe-best-v1";
+const PLAYER_NAME_KEY = "machi-narabe-player-name-v1";
+const PLAYER_NAME_PATTERN = /^[ぁ-んァ-ン一-龥々ー]{2,16}$/;
 const RANKING_API_URL = globalThis.MACHI_NARABE_CONFIG?.rankingApiUrl?.trim() || "";
 const RANKING_LIMIT = 10;
 const MAX_RANKING_SCORE = 999999999;
@@ -237,6 +239,11 @@ const state = {
 
 let rankingRecords = [];
 let rankingStatusText = "確認中";
+let rankingIsLoading = false;
+let rankingLoadFailed = false;
+let rankingAction = "";
+let rankingPendingRecord = null;
+let rankingRequestId = 0;
 let latestResultCreatedAt = "";
 let recommendationRefreshId = 0;
 
@@ -281,6 +288,8 @@ dom.rankingOverlay.addEventListener("click", (event) => {
     closeRankingOverlay();
   }
 });
+dom.overallRankingList.addEventListener("click", handleRankingAction);
+dom.resultRankingList.addEventListener("click", handleRankingAction);
 
 resetGame();
 loadRankings();
@@ -301,7 +310,7 @@ function resetGame() {
   state.activeEvent = null;
   state.eventMovesLeft = 0;
   state.lastEventId = "";
-  state.playerName = generateRandomPlayerName(secureRandom);
+  state.playerName = getStoredPlayerName(secureRandom);
   state.grid = Array.from({ length: CELL_COUNT }, () => null);
   state.current = 1;
   state.next = 1;
@@ -2039,8 +2048,11 @@ function clearMergeEffects(shouldRender = true) {
 }
 
 function createScoreRecord() {
+  const randomName = state.playerName || getStoredPlayerName(secureRandom);
+  state.playerName = randomName;
+
   return {
-    randomName: state.playerName || generateRandomPlayerName(secureRandom),
+    randomName,
     score: sanitizeInteger(state.score, 0, MAX_RANKING_SCORE),
     maxLevel: sanitizeInteger(maxLevel(), 1, MAX_LEVEL),
     maxChain: sanitizeInteger(state.bestChain, 0, 99),
@@ -2050,11 +2062,17 @@ function createScoreRecord() {
 }
 
 async function loadRankings() {
-  rankingRecords = [];
-  rankingStatusText = RANKING_API_URL ? "確認中" : "";
+  const requestId = ++rankingRequestId;
+  rankingAction = "load";
+  rankingIsLoading = Boolean(RANKING_API_URL);
+  rankingLoadFailed = false;
+  rankingStatusText = RANKING_API_URL ? (rankingRecords.length ? "更新中" : "確認中") : "準備中";
   renderRankings();
 
   if (!RANKING_API_URL) {
+    rankingIsLoading = false;
+    rankingAction = "";
+    renderRankings();
     return;
   }
 
@@ -2068,23 +2086,46 @@ async function loadRankings() {
       throw new Error(`ranking_get_${response.status}`);
     }
     const payload = await response.json();
+    if (requestId !== rankingRequestId) {
+      return;
+    }
     rankingRecords = sanitizeRankingRecords(payload.ranking ?? payload.overall ?? payload.today ?? []);
     rankingStatusText = "記録所";
+    rankingLoadFailed = false;
   } catch {
-    rankingRecords = [];
-    rankingStatusText = "";
+    if (requestId !== rankingRequestId) {
+      return;
+    }
+    rankingStatusText = "読み込み失敗";
+    rankingLoadFailed = true;
+  } finally {
+    if (requestId === rankingRequestId) {
+      rankingIsLoading = false;
+      rankingAction = "";
+      renderRankings();
+    }
   }
-
-  renderRankings();
 }
 
 async function submitRankingRecord(record) {
+  const pendingRecord = sanitizeRankingRecord(record);
+  rankingPendingRecord = pendingRecord;
+
   if (!RANKING_API_URL) {
-    rankingRecords = [];
-    rankingStatusText = "";
+    rankingStatusText = "準備中";
+    rankingIsLoading = false;
+    rankingLoadFailed = false;
+    rankingAction = "";
     renderRankings();
     return;
   }
+
+  const requestId = ++rankingRequestId;
+  rankingAction = "submit";
+  rankingIsLoading = true;
+  rankingLoadFailed = false;
+  rankingStatusText = "送信中";
+  renderRankings();
 
   try {
     const response = await fetch(RANKING_API_URL, {
@@ -2099,24 +2140,36 @@ async function submitRankingRecord(record) {
       throw new Error(`ranking_post_${response.status}`);
     }
     const payload = await response.json();
+    if (requestId !== rankingRequestId) {
+      return;
+    }
     const savedRecord = sanitizeRankingRecord(payload.record) || sanitizeRankingRecord(record);
     if (savedRecord) {
       state.latestRecord = savedRecord;
       latestResultCreatedAt = savedRecord.createdAt;
     }
     rankingRecords = sanitizeRankingRecords(payload.ranking ?? payload.overall ?? []);
+    rankingPendingRecord = null;
     rankingStatusText = "記録所";
+    rankingLoadFailed = false;
   } catch {
-    rankingRecords = [];
-    rankingStatusText = "";
+    if (requestId !== rankingRequestId) {
+      return;
+    }
+    rankingStatusText = "送信待ち";
+    rankingLoadFailed = true;
+  } finally {
+    if (requestId === rankingRequestId) {
+      rankingIsLoading = false;
+      rankingAction = "";
+      renderRankings();
+    }
   }
-
-  renderRankings();
 }
 
 function renderRankings() {
   const records = sortRankingRecords(rankingRecords).slice(0, RANKING_LIMIT);
-  const markup = records.length ? renderRankingRows(records) : `<li class="ranking-empty">まだ街の記録がありません</li>`;
+  const markup = renderRankingMarkup(records);
 
   dom.overallRankingList.innerHTML = markup;
   dom.resultRankingList.innerHTML = markup;
@@ -2126,6 +2179,52 @@ function renderRankings() {
   if (state.latestRecord) {
     dom.resultPlayerName.textContent = state.latestRecord.randomName;
   }
+}
+
+function renderRankingMarkup(records) {
+  const notice = renderRankingNotice(Boolean(records.length));
+  const rows = records.length ? renderRankingRows(records) : "";
+  return notice || rows ? `${notice}${rows}` : `<li class="ranking-empty">まだ街の記録がありません</li>`;
+}
+
+function renderRankingNotice(hasRecords) {
+  if (!RANKING_API_URL) {
+    return `<li class="ranking-empty">記録所は準備中です</li>`;
+  }
+
+  if (rankingIsLoading) {
+    if (rankingAction === "submit") {
+      return `<li class="ranking-empty ranking-notice">記録を送っています</li>`;
+    }
+    return hasRecords ? "" : `<li class="ranking-empty ranking-notice">記録を見に行っています</li>`;
+  }
+
+  if (!rankingLoadFailed) {
+    return rankingPendingRecord
+      ? `
+        <li class="ranking-empty ranking-notice">
+          <span>まだ送れていない記録があります。</span>
+          <button class="ranking-retry-button" type="button" data-ranking-action="submit">送る</button>
+        </li>
+      `
+      : "";
+  }
+
+  if (rankingPendingRecord) {
+    return `
+      <li class="ranking-empty ranking-notice">
+        <span>記録を送れませんでした。今回のスコアは画面に残っています。</span>
+        <button class="ranking-retry-button" type="button" data-ranking-action="submit">もう一度送る</button>
+      </li>
+    `;
+  }
+
+  return `
+    <li class="ranking-empty ranking-notice">
+      <span>記録を読み込めませんでした。</span>
+      <button class="ranking-retry-button" type="button" data-ranking-action="load">もう一度見る</button>
+    </li>
+  `;
 }
 
 function renderRankingRows(records) {
@@ -2152,6 +2251,12 @@ function getRankLabel(record) {
   if (!record) {
     return "確認中";
   }
+  if (rankingPendingRecord?.createdAt === record.createdAt) {
+    if (rankingIsLoading && rankingAction === "submit") {
+      return "送信中";
+    }
+    return "送信待ち";
+  }
   if (record.rank) {
     return `${record.rank}位`;
   }
@@ -2163,6 +2268,22 @@ function getRankLabel(record) {
   }
 
   return "確認中";
+}
+
+function handleRankingAction(event) {
+  const button = event.target.closest("[data-ranking-action]");
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.rankingAction;
+  if (action === "load") {
+    void loadRankings();
+    return;
+  }
+  if (action === "submit" && rankingPendingRecord) {
+    void submitRankingRecord(rankingPendingRecord);
+  }
 }
 
 function sortRankingRecords(records) {
@@ -2180,10 +2301,7 @@ function sanitizeRankingRecord(record) {
     return null;
   }
 
-  const randomName =
-    typeof record.randomName === "string" && /^[ぁ-んァ-ン一-龥々ー]{2,16}$/.test(record.randomName)
-      ? record.randomName
-      : null;
+  const randomName = isValidPlayerName(record.randomName) ? record.randomName : null;
   const createdAt = typeof record.createdAt === "string" && !Number.isNaN(Date.parse(record.createdAt)) ? record.createdAt : null;
   if (!randomName || !createdAt) {
     return null;
@@ -2210,6 +2328,42 @@ function sanitizeInteger(value, min, max) {
 
 function generateRandomPlayerName(randomSource) {
   return `${pickRandomNamePart(PLAYER_NAME_ADJECTIVES, randomSource)}${pickRandomNamePart(PLAYER_NAME_NOUNS, randomSource)}`;
+}
+
+function getStoredPlayerName(randomSource) {
+  const savedName = readPlayerName();
+  if (savedName) {
+    return savedName;
+  }
+
+  const randomName = generateRandomPlayerName(randomSource);
+  writePlayerName(randomName);
+  return randomName;
+}
+
+function readPlayerName() {
+  try {
+    const value = localStorage.getItem(PLAYER_NAME_KEY);
+    return isValidPlayerName(value) ? value : "";
+  } catch {
+    return "";
+  }
+}
+
+function writePlayerName(randomName) {
+  if (!isValidPlayerName(randomName)) {
+    return;
+  }
+
+  try {
+    localStorage.setItem(PLAYER_NAME_KEY, randomName);
+  } catch {
+    // 保存できない環境でもゲーム自体は続ける。
+  }
+}
+
+function isValidPlayerName(randomName) {
+  return typeof randomName === "string" && PLAYER_NAME_PATTERN.test(randomName);
 }
 
 function pickRandomNamePart(items, randomSource) {
