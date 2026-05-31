@@ -14,7 +14,7 @@ create table if not exists public.machi_scores (
     score between 0 and 999999999
   ),
   constraint machi_scores_max_level_range check (
-    max_level between 1 and 9
+    max_level between 1 and 5
   ),
   constraint machi_scores_max_chain_range check (
     max_chain between 0 and 99
@@ -33,9 +33,36 @@ create index if not exists machi_scores_score_created_idx
 create index if not exists machi_scores_created_at_idx
   on public.machi_scores (created_at desc);
 
+create or replace function public.machi_score_rank(
+  p_score integer,
+  p_created_at timestamptz,
+  p_id bigint
+)
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select count(*)::integer + 1
+  from public.machi_scores
+  where score > p_score
+     or (
+       score = p_score
+       and (
+         created_at < p_created_at
+         or (created_at = p_created_at and id < p_id)
+       )
+     )
+$$;
+
 alter table public.machi_scores enable row level security;
 
+grant select, insert on table public.machi_scores to service_role;
+
 revoke all on table public.machi_scores from anon, authenticated;
+revoke all on function public.machi_score_rank(integer, timestamptz, bigint) from public, anon, authenticated;
+grant execute on function public.machi_score_rank(integer, timestamptz, bigint) to service_role;
 
 do $$
 begin
@@ -46,6 +73,7 @@ begin
       and relnamespace = 'public'::regnamespace
       and relname = 'machi_scores_id_seq'
   ) then
+    grant usage, select on sequence public.machi_scores_id_seq to service_role;
     revoke all on sequence public.machi_scores_id_seq from anon, authenticated;
   end if;
 end

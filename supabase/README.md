@@ -3,6 +3,12 @@
 `まちならべ` の総合ランキングは Supabase Edge Function 経由で保存します。
 GitHub Pages 側には秘密鍵を置きません。
 
+## いま用意してあるもの
+
+- 総合ランキング用のDB定義
+- スコア登録とトップ10取得を行う Edge Function
+- GitHub Pagesから呼び出すための `src/config.js` の接続口
+
 ## このリポジトリに入れるもの
 
 - `schema.sql`: 総合ランキング用DBテーブル
@@ -20,33 +26,46 @@ GitHub Pages 側には秘密鍵を置きません。
 
 保存するのは、ランダムなプレイヤー名、スコア、最大建物、最大コンボ、手数、作成日時だけです。
 
-## 手順
+## あなたにやってほしいこと
 
-1. Supabaseで新しいプロジェクトを作る
-2. Supabase SQL Editorで `schema.sql` を実行する
-3. Supabase CLIでプロジェクトに接続する
+### 1. Supabaseプロジェクトを作る
 
-```sh
-supabase login
-supabase link --project-ref <project-ref>
+Supabaseで新しいプロジェクトを作ります。
+作成後、Project Settingsで次の2つを確認します。
+
+- Project ref
+- service_role key
+
+`service_role key` は秘密鍵です。GitHub Pages、`src/config.js`、GitHubの通常ファイルには入れないでください。
+Supabaseの予約名を避けるため、Function用の環境変数名は `SUPABASE_` で始めません。
+
+### 2. DBテーブルを作る
+
+SupabaseのSQL Editorで、このリポジトリの `supabase/schema.sql` を実行してください。
+
+### 3. Edge Functionの秘密情報を設定する
+
+Supabase Dashboardの Edge Functions Secrets で設定します。
+本番だけなら `APP_ORIGINS` は `https://24-105.github.io` でOKです。
+ローカルやiPhone確認も一緒に使う場合は、必要なURLをカンマ区切りで追加します。
+
+```txt
+MACHI_DB_URL=https://<project-ref>.supabase.co
+MACHI_SERVICE_ROLE_KEY=<service-role-key>
+APP_ORIGINS=https://24-105.github.io,http://127.0.0.1:4387,http://192.168.0.197:4387
 ```
 
-4. Edge Functionの秘密情報を設定する
+### 4. Edge FunctionをDashboardで作る
 
-```sh
-supabase secrets set \
-  SUPABASE_URL=https://<project-ref>.supabase.co \
-  SUPABASE_SERVICE_ROLE_KEY=<service-role-key> \
-  APP_ORIGINS=https://24-105.github.io
-```
+- Edge Functions で新しいFunctionを作る
+- Function名は `machi-ranking`
+- Dashboard Editorで `functions/machi-ranking/index.ts` の中身を入れる
+- GitHub Pagesから呼ぶため、JWT verificationはオフにする
+- Deployする
 
-5. Edge Functionをデプロイする
+### 5. フロント側にURLを入れる
 
-```sh
-supabase functions deploy machi-ranking
-```
-
-6. `src/config.js` の `rankingApiUrl` に Function URL を入れる
+デプロイ後の Function URL を `src/config.js` の `rankingApiUrl` に入れます。
 
 ```js
 window.MACHI_NARABE_CONFIG = {
@@ -54,4 +73,28 @@ window.MACHI_NARABE_CONFIG = {
 };
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` は絶対に `src/config.js` や GitHub Pages へ入れないでください。
+ここに入れるのはFunction URLだけです。
+`MACHI_SERVICE_ROLE_KEY` は絶対に入れないでください。
+
+## 動作確認
+
+Function URLを入れたあと、ブラウザでゲームを遊んでリザルト画面まで進めるとスコアが送信されます。
+手元でAPIだけ確認する場合は、次のように叩けます。
+
+```sh
+curl https://<project-ref>.supabase.co/functions/v1/machi-ranking
+```
+
+```sh
+curl -X POST https://<project-ref>.supabase.co/functions/v1/machi-ranking \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "randomName": "まち太郎",
+    "score": 12345,
+    "maxLevel": 3,
+    "maxChain": 4,
+    "turns": 42
+  }'
+```
+
+返ってくるランキングは総合トップ10です。

@@ -40,10 +40,7 @@
       property="og:description"
       content="建物を置いて、3つつなげて、少しずつ街を大きくするスマホ街パズル。"
     />
-    <meta
-      property="og:image"
-      content="https://24-105.github.io/machi-narabe/favicon.svg"
-    />
+    <meta property="og:image" content="https://24-105.github.io/machi-narabe/favicon.svg" />
     <meta property="og:image:alt" content="まちならべのアプリアイコン" />
     <meta name="twitter:card" content="summary" />
     <meta
@@ -54,10 +51,7 @@
       name="twitter:description"
       content="7×7の街マップで同じ建物を3つつなげ、ミッションとアイテムでベストスコアを狙うスマホ街パズル。"
     />
-    <meta
-      name="twitter:image"
-      content="https://24-105.github.io/machi-narabe/favicon.svg"
-    />
+    <meta name="twitter:image" content="https://24-105.github.io/machi-narabe/favicon.svg" />
     <link rel="canonical" href="https://24-105.github.io/machi-narabe/" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="./site.webmanifest" />
@@ -138,7 +132,7 @@
       <section class="score-strip" aria-label="状況">
         <div class="stat-card timer-card">
           <span>作業手数</span>
-          <strong id="timeValue">28</strong>
+          <strong id="timeValue">60</strong>
           <i id="timeBar"></i>
         </div>
         <div class="stat-card score-card">
@@ -160,7 +154,7 @@
         <div class="goal-copy">
           <span>まち掲示板</span>
           <strong id="goalValue">住宅</strong>
-          <small id="goalHint">作ると手数+6</small>
+          <small id="goalHint">作ると手数+3</small>
           <div
             class="evolution-rail"
             id="evolutionRail"
@@ -223,40 +217,28 @@
           </div>
           <div class="rule-visual-grid" aria-label="遊び方のポイント">
             <div class="rule-visual-card">
-              <span
-                class="rule-mini-board rule-mini-board-lot"
-                aria-hidden="true"
-              >
+              <span class="rule-mini-board rule-mini-board-lot" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
               </span>
               <strong>空き区画</strong>
               <small>ここに置く</small>
             </div>
             <div class="rule-visual-card">
-              <span
-                class="rule-mini-board rule-mini-board-lock"
-                aria-hidden="true"
-              >
+              <span class="rule-mini-board rule-mini-board-lock" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
               </span>
               <strong>工事待ち</strong>
               <small>あとで開く</small>
             </div>
             <div class="rule-visual-card">
-              <span
-                class="rule-mini-board rule-mini-board-open"
-                aria-hidden="true"
-              >
+              <span class="rule-mini-board rule-mini-board-open" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
               </span>
               <strong>掲示板</strong>
               <small>お願いを達成</small>
             </div>
             <div class="rule-visual-card">
-              <span
-                class="rule-mini-board rule-mini-board-item"
-                aria-hidden="true"
-              >
+              <span class="rule-mini-board rule-mini-board-item" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
               </span>
               <strong>街の道具</strong>
@@ -296,7 +278,7 @@
 
       <section class="game-set-overlay" id="gameSetOverlay" aria-hidden="true">
         <div class="game-set-flash" role="status" aria-live="polite">
-          <span>本日の街づくり終了</span>
+          <span id="gameSetLabel">本日の街づくり終了</span>
           <strong id="gameSetScoreValue">0</strong>
         </div>
       </section>
@@ -308,10 +290,15 @@
           aria-modal="true"
           aria-labelledby="resultTitle"
         >
+          <div class="result-score-hero">
+            <span>スコア</span>
+            <strong id="finalScoreValue">0</strong>
+            <small><b id="gradeValue">C</b>ランク</small>
+          </div>
           <div class="result-headline">
             <div>
-              <span id="gradeValue" class="result-grade-pill">初</span>
-              <h2 id="resultTitle">まちの記録</h2>
+              <span id="resultCityTitle" class="result-city-title">小さな街</span>
+              <h2 id="resultTitle" class="result-title-hidden">まちの記録</h2>
             </div>
             <div class="result-player">
               <span>街の呼び名</span>
@@ -322,10 +309,6 @@
             <div>
               <span>記録所順位</span>
               <strong id="resultRankValue">集計中</strong>
-            </div>
-            <div class="result-score-hero">
-              <span>スコア</span>
-              <strong id="finalScoreValue">0</strong>
             </div>
             <p id="resultMessage">まずは3つそろえる形を覚えよう。</p>
           </div>
@@ -353,6 +336,7 @@
           ></div>
           <details class="result-detail-panel">
             <summary>街の内訳を見る</summary>
+            <div class="score-breakdown" id="scoreBreakdown" aria-label="スコア内訳"></div>
             <div class="result-grid">
               <div>
                 <span>街の目玉</span>
@@ -368,10 +352,7 @@
               </div>
             </div>
           </details>
-          <section
-            class="ranking-panel result-ranking-panel"
-            aria-label="総合ランキング"
-          >
+          <section class="ranking-panel result-ranking-panel" aria-label="総合ランキング">
             <div class="ranking-heading">
               <span>まちの記録所</span>
               <strong id="resultRankingStatus">確認中</strong>
@@ -411,10 +392,7 @@
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム: かめぽす便"
               >
-                <span
-                  class="recommend-card-art recommend-card-art-kameposu"
-                  aria-hidden="true"
-                >
+                <span class="recommend-card-art recommend-card-art-kameposu" aria-hidden="true">
                   <span class="recommend-kameposu-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
@@ -426,16 +404,13 @@
               </a>
               <a
                 class="recommend-card"
-                href="https://24-105.github.io/hitoyo-saisyucho/"
-                data-icon-src="https://24-105.github.io/hitoyo-saisyucho/assets/icon.svg"
+                href="https://24-105.github.io/hitoyo-saishucho/"
+                data-icon-src="https://24-105.github.io/hitoyo-saishucho/assets/icon.svg"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム"
               >
-                <span
-                  class="recommend-card-art recommend-card-art-hitoyo"
-                  aria-hidden="true"
-                >
+                <span class="recommend-card-art recommend-card-art-hitoyo" aria-hidden="true">
                   <span class="recommend-hitoyo-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
@@ -522,10 +497,7 @@
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム: かめぽす便"
               >
-                <span
-                  class="recommend-card-art recommend-card-art-kameposu"
-                  aria-hidden="true"
-                >
+                <span class="recommend-card-art recommend-card-art-kameposu" aria-hidden="true">
                   <span class="recommend-kameposu-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
@@ -537,16 +509,13 @@
               </a>
               <a
                 class="recommend-card"
-                href="https://24-105.github.io/hitoyo-saisyucho/"
-                data-icon-src="https://24-105.github.io/hitoyo-saisyucho/assets/icon.svg"
+                href="https://24-105.github.io/hitoyo-saishucho/"
+                data-icon-src="https://24-105.github.io/hitoyo-saishucho/assets/icon.svg"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="おすすめゲーム"
               >
-                <span
-                  class="recommend-card-art recommend-card-art-hitoyo"
-                  aria-hidden="true"
-                >
+                <span class="recommend-card-art recommend-card-art-hitoyo" aria-hidden="true">
                   <span class="recommend-hitoyo-icon"></span>
                 </span>
                 <span class="recommend-card-copy">
